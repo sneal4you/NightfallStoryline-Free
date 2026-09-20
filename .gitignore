@@ -1,0 +1,14 @@
+# Runtime junk (el bot los crea al correr; no versionar)
+nf_stop.flag
+horde_wurms_done.txt
+*.log
+*.tmp
+
+# Cuentas del comprador (las crea GW_Launcher al abrirse)
+Accounts.json
+
+# OS / editor
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
