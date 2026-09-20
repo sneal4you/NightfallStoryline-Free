@@ -391,6 +391,10 @@ Func _NF_LaunchAccount($accountName)
         Out("[Launch] _NF_LaunchAccount ya en curso -> ignoro doble llamada")
         Return False
     EndIf
+    ; Resolver identificador real de lanzamiento (el launcher matchea por character;
+    ; lo elegido puede venir de Name/title). A partir de aqui $accountName = clave real.
+    Local $resolved = _ResolveLaunchKey($accountName)
+    If $resolved <> "" Then $accountName = $resolved
     Local $procsCheck = ProcessList("gw.exe")
     If IsArray($procsCheck) And $procsCheck[0][0] > 0 Then
         For $ck = 1 To $procsCheck[0][0]

@@ -419,6 +419,44 @@ Func _GetLauncherAccountNames()
     Out("[GUI] Cuentas: " & $nShow & " en desplegable (" & $nSkip & " sin ningun identificador) desde " & $path)
     Return $out
 EndFunc
+
+; Resuelve el identificador para GW_Launcher -launch buscando la entrada cuyo
+; character/Name/title coincida con lo elegido. Devuelve "character" si lo tiene
+; (es lo que el launcher matchea); si no, Name/title con AVISO de rellenar
+; character en Accounts.json (si no: "Failed to find account for X").
+Func _ResolveLaunchKey($display)
+    Local $path = _FindGwLauncherAccountsPath()
+    If Not FileExists($path) Then Return $display
+    Local $txt = FileRead($path)
+    If @error Or $txt = "" Then Return $display
+    Local $c = StringRegExp($txt, '"character"\s*:\s*"([^"]*)"', 3)
+    Local $n = StringRegExp($txt, '"Name"\s*:\s*"([^"]*)"', 3)
+    Local $t = StringRegExp($txt, '"title"\s*:\s*"([^"]*)"', 3)
+    If Not IsArray($c) Then Local $c[0]
+    If Not IsArray($n) Then Local $n[0]
+    If Not IsArray($t) Then Local $t[0]
+    Local $cnt = UBound($c)
+    If UBound($n) > $cnt Then $cnt = UBound($n)
+    If UBound($t) > $cnt Then $cnt = UBound($t)
+    For $i = 0 To $cnt - 1
+        Local $hit = False
+        If $i < UBound($c) And StringCompare(StringStripWS($c[$i], 3), $display, 2) = 0 And $display <> "" Then $hit = True
+        If Not $hit And $i < UBound($n) And StringCompare(StringStripWS($n[$i], 3), $display, 2) = 0 And $display <> "" Then $hit = True
+        If Not $hit And $i < UBound($t) And StringCompare(StringStripWS($t[$i], 3), $display, 2) = 0 And $display <> "" Then $hit = True
+        If Not $hit Then ContinueLoop
+        Local $ch = ""
+        If $i < UBound($c) Then $ch = StringStripWS($c[$i], 3)
+        If $ch <> "" Then Return $ch
+        If $i < UBound($n) And StringStripWS($n[$i], 3) <> "" Then $ch = StringStripWS($n[$i], 3)
+        If $ch = "" And $i < UBound($t) Then $ch = StringStripWS($t[$i], 3)
+        Out("[Launch] AVISO: la cuenta '" & $display & "' no tiene character en Accounts.json -> lanzo con '" & $ch & "'. Rellena character o fallara (Failed to find account).")
+        Ui_SetStatus("Aviso: '" & $display & "' sin character en Accounts.json.")
+        If $ch <> "" Then Return $ch
+        ExitLoop
+    Next
+    Out("[Launch] AVISO: '" & $display & "' no aparece en Accounts.json -> lanzo igual (puede fallar).")
+    Return $display
+EndFunc
 Func _FindGwLauncherAccountsPath()
     Local $dir = _FindGwLauncherDir()
     If $dir = "" Then Return ""
