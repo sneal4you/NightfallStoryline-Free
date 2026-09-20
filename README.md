@@ -14,7 +14,7 @@ An AutoIt bot for the Guild Wars Nightfall campaign. The free edition includes p
 1. Download the repository as a ZIP file and extract it to a permanent folder.
 2. Install AutoIt and open `NightfallStoryline.au3` with AutoIt x86.
 3. Configure your character and build options in `config.ini`.
-4. If you use GW Launcher, download it from the project Releases page and place `GW_Launcher.exe` beside `NightfallStoryline.au3`.
+4. If you use GW Launcher, open the included `GW_Launcher.exe` and add your account.
 5. Start Guild Wars or select an account from the bot. Choose a phase and press **START**.
 
 Use **AUTO ON** to continue through the included phases automatically. **STOP** pauses the active run.
@@ -46,7 +46,7 @@ Use **AUTO ON** to continue through the included phases automatically. **STOP** 
 | --- | --- |
 | `NightfallStoryline.au3` | Main entry point. Starts the bot and coordinates phase execution. |
 | `config.ini` | User configuration for character, builds, and runtime options. |
-| `GW_Launcher.exe` | Optional account launcher. It will be distributed through Releases instead of Git LFS. |
+| `GW_Launcher.exe` | Optional account launcher included with the free edition. It is a regular Git file and does not require Git LFS. |
 | `gui/` | Bot interface: phase list, controls, activity log, and live status panel. |
 | `gui/MainWindow.au3` | Main application window and user controls. |
 | `gui/Catalog.au3` | Phase catalogue shown by the interface. |
