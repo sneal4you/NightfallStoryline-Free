@@ -374,7 +374,7 @@ Func Gui_v2_Init()
         GUICtrlSetData($cbx_char_select, "-|" & $sAccounts, "-")
         Ui_SetStatus("Selecciona una cuenta en el desplegable.")
     Else
-        Ui_SetStatus("No se encontraron cuentas en Accounts.json.")
+        Ui_SetStatus("No se encontraron cuentas: pon GW_Launcher.exe + Accounts.json junto al bot o fija [GW] LauncherPath en config.ini.")
     EndIf
 EndFunc
 Func _GetLauncherAccountNames()
@@ -382,31 +382,12 @@ Func _GetLauncherAccountNames()
     If Not FileExists($path) Then Return ""
     Local $txt = FileRead($path)
     If @error Or $txt = "" Then Return ""
-    ; character/Name/title vacios (solo email): usar parte local del email para que
-    ; SIEMPRE salga en el desplegable. Diagnostico: fichero leido + conteo.
     Local $c = StringRegExp($txt, '"character"\s*:\s*"([^"]*)"', 3)
-    Local $n = StringRegExp($txt, '"Name"\s*:\s*"([^"]*)"', 3)
-    Local $t = StringRegExp($txt, '"title"\s*:\s*"([^"]*)"', 3)
-    Local $e = StringRegExp($txt, '"email"\s*:\s*"([^"]*)"', 3)
     If Not IsArray($c) Then Local $c[0]
-    If Not IsArray($n) Then Local $n[0]
-    If Not IsArray($t) Then Local $t[0]
-    If Not IsArray($e) Then Local $e[0]
     Local $cnt = UBound($c)
-    If UBound($n) > $cnt Then $cnt = UBound($n)
-    If UBound($t) > $cnt Then $cnt = UBound($t)
-    If UBound($e) > $cnt Then $cnt = UBound($e)
     Local $out = "", $seen = "|", $nShow = 0, $nSkip = 0
     For $i = 0 To $cnt - 1
-        Local $name = ""
-        If $i < UBound($c) Then $name = StringStripWS($c[$i], 3)
-        If $name = "" And $i < UBound($n) Then $name = StringStripWS($n[$i], 3)
-        If $name = "" And $i < UBound($t) Then $name = StringStripWS($t[$i], 3)
-        If $name = "" And $i < UBound($e) Then
-            Local $em = StringStripWS($e[$i], 3)
-            Local $at = StringInStr($em, "@")
-            If $at > 1 Then $name = StringLeft($em, $at - 1) & " (email)"
-        EndIf
+        Local $name = StringStripWS($c[$i], 3)
         If $name = "" Then
             $nSkip += 1
             ContinueLoop
@@ -419,11 +400,6 @@ Func _GetLauncherAccountNames()
     Out("[GUI] Cuentas: " & $nShow & " en desplegable (" & $nSkip & " sin ningun identificador) desde " & $path)
     Return $out
 EndFunc
-
-; Resuelve el identificador para GW_Launcher -launch buscando la entrada cuyo
-; character/Name/title coincida con lo elegido. Devuelve "character" si lo tiene
-; (es lo que el launcher matchea); si no, Name/title con AVISO de rellenar
-; character en Accounts.json (si no: "Failed to find account for X").
 Func _ResolveLaunchKey($display)
     Local $path = _FindGwLauncherAccountsPath()
     If Not FileExists($path) Then Return $display
@@ -466,12 +442,17 @@ Func _FindGwLauncherAccountsPath()
 EndFunc
 Func _FindGwLauncherDir()
     Static $sCached = ""
-    If $sCached <> "" And FileExists($sCached & "\GW_Launcher.exe") And FileExists($sCached & "\Accounts.json") Then Return $sCached
+    If $sCached <> "" And FileExists($sCached & "\Accounts.json") Then Return $sCached
+    ; FIX ZIP -master: Accounts.json siempre está junto al bot, sin importar el nombre de la carpeta
+    If FileExists(@ScriptDir & "\Accounts.json") Then
+        $sCached = @ScriptDir
+        Return $sCached
+    EndIf
     Local $cfg = @ScriptDir & "\config.ini"
     Local $launcher = IniRead($cfg, "GW", "LauncherPath", "")
     If $launcher <> "" Then
         Local $dirCfg = _DirName($launcher)
-        If FileExists($dirCfg & "\GW_Launcher.exe") And FileExists($dirCfg & "\Accounts.json") Then
+        If FileExists($dirCfg & "\Accounts.json") Then
             $sCached = $dirCfg
             Return $sCached
         EndIf
@@ -509,7 +490,7 @@ EndFunc
 Func _FindGwLauncherDirUnder($root, $depth)
     If $root = "" Or $depth < 0 Or Not FileExists($root) Then Return ""
     Local $candidate = $root & "\GW_Launcher.exe"
-    If FileExists($candidate) And FileExists($root & "\Accounts.json") Then Return $root
+    If FileExists($root & "\Accounts.json") Then Return $root
     Local $hSearch = FileFindFirstFile($root & "\*")
     If $hSearch = -1 Then Return ""
     While 1
@@ -519,7 +500,7 @@ Func _FindGwLauncherDirUnder($root, $depth)
         Local $path = $root & "\" & $name
         If StringInStr(FileGetAttrib($path), "D") Then
             Local $lname = StringLower($name)
-            If StringInStr($lname, "gw") Or StringInStr($lname, "guild") Or StringInStr($lname, "launcher") Or StringInStr($lname, "suite") Or StringInStr($lname, "scripts") Or StringInStr($lname, "gwau3") Or StringInStr($lname, "game") Or StringInStr($lname, "games") Then
+            If StringInStr($lname, "gw") Or StringInStr($lname, "guild") Or StringInStr($lname, "launcher") Or StringInStr($lname, "suite") Or StringInStr($lname, "scripts") Or StringInStr($lname, "gwau3") Or StringInStr($lname, "game") Or StringInStr($lname, "games") Or StringInStr($lname, "nightfall") Or StringInStr($lname, "storyline") Or StringInStr($lname, "story") Or StringInStr($lname, "bot") Or StringInStr($lname, "free") Or StringInStr($lname, "master") Or StringInStr($lname, "main") Or StringInStr($lname, "trial") Or StringInStr($lname, "night") Then
                 Local $found = _FindGwLauncherDirUnder($path, $depth - 1)
                 If $found <> "" Then
                     FileClose($hSearch)
@@ -1829,7 +1810,7 @@ Func _ResumeLogActiveQuests()
 EndFunc
 Func _PhaseVerify_QidFor($actionKey)
     Switch $actionKey
-        Case "SkipTutorial"
+        Case "SkipTutorial_P1", "SkipTutorial_P2", "SkipTutorial_P3"
             Return 677            
         Case "PrimaryTraining"
             Return 600            
@@ -1938,7 +1919,20 @@ Func _PhaseVerify_CurrentPhase($actionKey)
 EndFunc
 Func _IsPhaseDoneByQuestState($actionKey)
     Switch $actionKey
-        Case "SkipTutorial"
+        Case "SkipTutorial_P1"
+            If Quest_GetQuestInfo(677, "LogState") = 33 Or Quest_GetQuestInfo(677, "LogState") = 35 Then Return True
+            If Map_GetMapID() = 544 Then Return True
+            For $i = 1 To 7
+                If Party_GetMyPartyHeroInfo($i, "HeroID") = 6 Then Return True
+            Next
+            Return False
+        Case "SkipTutorial_P2"
+            If Map_GetMapID() = 544 Then Return True
+            For $i = 1 To 7
+                If Party_GetMyPartyHeroInfo($i, "HeroID") = 6 Then Return True
+            Next
+            Return False
+        Case "SkipTutorial_P3"
             For $i = 1 To 7
                 If Party_GetMyPartyHeroInfo($i, "HeroID") = 6 Then Return True
             Next
@@ -1993,7 +1987,9 @@ Func _IsPhaseDoneByQuestState($actionKey)
 EndFunc
 Func _PhaseHasQuestCheck($actionKey)
     Switch $actionKey
-        Case "SkipTutorial"            
+        Case "SkipTutorial_P1"         
+        Case "SkipTutorial_P2"         
+        Case "SkipTutorial_P3"         
         Case "TravelToSunspearHall"    
         Case "TravelToAstralarium"     
         Case "TravelToChampionsDawn"   
@@ -2156,7 +2152,7 @@ Func _AutoResumePhases()
             IniDelete($g_sConfigFile, "Phases." & $g_sCache_charName)
             Out("[Resume] Char nuevo detectado (tutorial activo, LogState677=" & $logState677 & ") - INI de fases borrado, todo pending")
             _GUICtrlListView_SetItemSelected($hPhaseList, 0, True, True)
-            Ui_SetStatus("Char nuevo detectado. Siguiente: 1 SkipTutorial")
+            Ui_SetStatus("Char nuevo detectado. Siguiente: 1 TakeTheShortcut_P1")
             $g_bResumeApplied = True
             $g_sResumeAppliedFor = $g_sCache_charName
             Return
@@ -2166,7 +2162,7 @@ Func _AutoResumePhases()
     Local $applied = 0
     Local $appliedByQuest = 0
     Local $staleCleared = 0
-    Local $skipTutorialDone = _IsPhaseDoneByQuestState("SkipTutorial")
+    Local $skipTutorialDone = _IsPhaseDoneByQuestState("SkipTutorial_P3")
     For $i = 0 To UBound($g_aPhases) - 1
         Local $actionKey = $g_aPhases[$i][0]
         Local $iniState = IniRead($g_sConfigFile, $section, $actionKey, "")

@@ -12,11 +12,10 @@ If DllCall("kernel32.dll", "dword", "GetLastError")[0] = 183 Then
 EndIf
 #include "GwAu3-main\API\_GwAu3.au3"
 #include "lib\_Au3CheckStubs.au3"
-#include "lib\_TrialCompat.au3" ; FREE 1-16: huerfanas de fases 17+ (restores M08/RP, utils PMP/TV)
+#include "lib\_TrialCompat.au3"
 #include "lib\_UpgradeCommand.au3" 
 #include "lib\_GwNFAgentIDs.au3" 
 Global $g_bGwDown = False
-; FREE 1-16: la fase M11 no existe en este bot -> su flag de hold siempre False.
 Global $g_bM11HoldPosition = False                 
 Global $g_bUserPaused = False             
 Global $g_bTeamSetupRunning = False       
@@ -391,8 +390,6 @@ Func _NF_LaunchAccount($accountName)
         Out("[Launch] _NF_LaunchAccount ya en curso -> ignoro doble llamada")
         Return False
     EndIf
-    ; Resolver identificador real de lanzamiento (el launcher matchea por character;
-    ; lo elegido puede venir de Name/title). A partir de aqui $accountName = clave real.
     Local $resolved = _ResolveLaunchKey($accountName)
     If $resolved <> "" Then $accountName = $resolved
     Local $procsCheck = ProcessList("gw.exe")
@@ -1179,7 +1176,6 @@ Global $g_uiTimer = TimerInit()
 Global Const $UI_REFRESH_MS = 1000
 While True
     Sleep(50)
-    ; FREE 1-16: hooks dev de BIA apply-runas (fase 22) eliminados (codigo borrado).
     If $g_iRequestedPhase >= 0 And Not $g_bActionRunning Then
         Local $iRequested = $g_iRequestedPhase
         $g_iRequestedPhase = -1
@@ -1262,19 +1258,47 @@ While True
             ContinueLoop
         EndIf
         Switch $g_sPendingAction
-            Case "SkipTutorial"
+            Case "SkipTutorial_P1"
                 Cache_SkillBar()
                 _ResetStuckBaseline()
-                $g_currentPhase = "SkipTutorial"
+                $g_currentPhase = "SkipTutorial_P1"
                 $BotRunning = True
-                Out("[Phase] SkipTutorial iniciada (lineal: Kormir + Jahdugar)")
+                Out("[Phase] SkipTutorial_P1 iniciada (Parte 1: cinematic + Kormir)")
                 Out("[Phase] Wait 5s estabilización post-Initialize...")
                 Sleep(5000)
-                If Quest_Tutorial_Run() Then
-                    Out("[Phase] SkipTutorial COMPLETADA")
+                If Quest_Tutorial_Part1_Run() Then
+                    Out("[Phase] SkipTutorial_P1 COMPLETADA")
                     _MarkPhaseDone($g_sPendingAction)
                 Else
-                    Out("[Phase] SkipTutorial FAILED")
+                    Out("[Phase] SkipTutorial_P1 FAILED")
+                    _MarkPhaseFailed($g_sPendingAction)
+                EndIf
+                $g_currentPhase = ""
+            Case "SkipTutorial_P2"
+                Cache_SkillBar()
+                _ResetStuckBaseline()
+                $g_currentPhase = "SkipTutorial_P2"
+                $BotRunning = True
+                Out("[Phase] SkipTutorial_P2 iniciada (Parte 2: Jahdugar + portal)")
+                If Quest_Tutorial_Part2_Run() Then
+                    Out("[Phase] SkipTutorial_P2 COMPLETADA")
+                    _MarkPhaseDone($g_sPendingAction)
+                Else
+                    Out("[Phase] SkipTutorial_P2 FAILED")
+                    _MarkPhaseFailed($g_sPendingAction)
+                EndIf
+                $g_currentPhase = ""
+            Case "SkipTutorial_P3"
+                Cache_SkillBar()
+                _ResetStuckBaseline()
+                $g_currentPhase = "SkipTutorial_P3"
+                $BotRunning = True
+                Out("[Phase] SkipTutorial_P3 iniciada (Parte 3: reward + Koss)")
+                If Quest_Tutorial_Part3_Run() Then
+                    Out("[Phase] SkipTutorial_P3 COMPLETADA")
+                    _MarkPhaseDone($g_sPendingAction)
+                Else
+                    Out("[Phase] SkipTutorial_P3 FAILED")
                     _MarkPhaseFailed($g_sPendingAction)
                 EndIf
                 $g_currentPhase = ""
@@ -1585,7 +1609,6 @@ While True
                 If $ok Then
                     Out("[Phase] " & $g_sPendingAction & " COMPLETADA")
                     _MarkPhaseDone($g_sPendingAction)
-                    ; FREE 1-16: excursion Korr (endgame) eliminada.
                 Else
                     If Bot_UserStopped() Then
                         Out("[Phase] " & $g_sPendingAction & " abortada por Stop/cambio manual -> no re-encolar")
@@ -1724,8 +1747,15 @@ Func _StateTick()
 EndFunc
 Func _IsPhaseComplete()
     Switch $g_currentPhase
-        Case "SkipTutorial"
+        Case "SkipTutorial_P1"
+            Return (Quest_GetQuestInfo(677, "LogState") = 33 Or Quest_GetQuestInfo(677, "LogState") = 35)
+        Case "SkipTutorial_P2"
             Return (Map_GetMapID() = $GC_I_MAP_ID_CHAHBEK_VILLAGE_OUTPOST)
+        Case "SkipTutorial_P3"
+            For $iK = 1 To 7
+                If Party_GetMyPartyHeroInfo($iK, "HeroID") = 6 Then Return True
+            Next
+            Return False
         Case "RewardM01"
             Return ($g_state = $NF_STATE_DONE _
                 Or Map_GetMapID() = $GC_I_MAP_ID_CHUURHIR_FIELDS)
