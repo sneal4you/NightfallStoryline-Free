@@ -1,6 +1,6 @@
 {
   "Encrypt": false,
-  "CheckForUpdates": true,
+  "CheckForUpdates": false,
   "AutoUpdate": false,
   "LaunchMinimized": false,
   "TimeoutOnModlaunch": 5000
